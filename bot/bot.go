@@ -54,7 +54,8 @@ func SetupRoutes(b *ele.Bot, app *handlers.AppContext) {
 	handlers.RegisterDebtors(b, app)
 	handlers.RegisterStock(b, app)
 
-	// 4. Catch-all for text and photo messages during active flows
+	// 4. Catch-all for text and document messages during active flows
 	b.Handle(ele.OnText, handlers.HandleTextInput(app))
-	b.Handle(ele.OnPhoto, handlers.HandleTextInput(app))
+	b.Handle(ele.OnDocument, handlers.HandleAddProductDoc(app))
+	b.Handle(ele.OnPhoto, handlers.HandleAddProductPhoto(app))
 }

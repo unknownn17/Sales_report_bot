@@ -81,8 +81,6 @@ func HandleTextInput(app *AppContext) ele.HandlerFunc {
 
 		sess := app.SessionMgr.GetSession(adminID)
 		switch sess.Flow {
-		case state.FlowAddProduct:
-			return handleAddProductText(c, app, sess)
 		case state.FlowConfirmSale:
 			return handleConfirmSaleText(c, app, sess)
 		case state.FlowRecordPayment:

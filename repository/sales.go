@@ -187,9 +187,9 @@ func (r *SaleRepo) ProfitReport(ctx context.Context, from, to time.Time) (*Profi
 				"$quantity",
 			},
 		}},
-		"total_sold": bson.M{"$sum": "$quantity"},
-		"cash_count": bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$payment_type", models.PaymentTypeCash}}, 1, 0}}},
-		"card_count": bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$payment_type", models.PaymentTypeCard}}, 1, 0}}},
+		"total_sold":   bson.M{"$sum": "$quantity"},
+		"cash_count":   bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$payment_type", models.PaymentTypeCash}}, 1, 0}}},
+		"card_count":   bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$payment_type", models.PaymentTypeCard}}, 1, 0}}},
 		"credit_count": bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$payment_type", models.PaymentTypeCredit}}, 1, 0}}},
 	}}}
 
@@ -261,4 +261,31 @@ func (r *SaleRepo) ProfitReport(ctx context.Context, from, to time.Time) (*Profi
 	}
 
 	return result, nil
+}
+
+// FindSalesInRange returns all individual sale records within a date range, sorted by date.
+func (r *SaleRepo) FindSalesInRange(ctx context.Context, from, to time.Time) ([]models.Sale, error) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"sold_at": bson.M{
+			"$gte": from,
+			"$lt":  to,
+		},
+	}
+
+	findOpts := options.Find().SetSort(bson.D{{Key: "sold_at", Value: -1}})
+	cursor, err := r.col.Find(timeoutCtx, filter, findOpts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(timeoutCtx)
+
+	var sales []models.Sale
+	if err := cursor.All(timeoutCtx, &sales); err != nil {
+		return nil, err
+	}
+
+	return sales, nil
 }

@@ -17,6 +17,6 @@ COPY --from=builder /out/telegram-sales-bot /app/telegram-sales-bot
 
 ENV BOT_TOKEN=""
 ENV ADMIN_IDS=""
-ENV MONGO_URI="mongodb://mongo:27017"
-ENV DB_NAME="report_bot"
+ENV MONGO_URI=""
+ENV DB_NAME=""
 ENTRYPOINT ["/app/telegram-sales-bot"]

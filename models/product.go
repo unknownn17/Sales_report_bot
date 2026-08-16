@@ -17,9 +17,9 @@ type Product struct {
 	CostPriceSom float64            `bson:"cost_price_som"` // Cost price in Uzbek so'm (directly entered)
 	SellPrice    float64            `bson:"sell_price"`     // Selling price in Uzbek so'm
 	Description  string             `bson:"description,omitempty"`
-	PhotoFileID  string             `bson:"photo_file_id,omitempty"`
 	Status       string             `bson:"status"` // active | out_of_stock | archived
 	Stock        []StockItem        `bson:"stock"`  // embedded
+	ExtraFields  map[string]string  `bson:"extra_fields,omitempty"` // Dynamic fields from Excel
 	CreatedAt    time.Time          `bson:"created_at"`
 	UpdatedAt    time.Time          `bson:"updated_at"`
 	AddedBy      int64              `bson:"added_by"`

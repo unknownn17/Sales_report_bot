@@ -12,7 +12,7 @@ func TestSessionManager(t *testing.T) {
 	admin1 := int64(1001)
 	admin2 := int64(2002)
 
-	mgr.SetFlow(admin1, FlowAddProduct, AddStepWaitingPost)
+	mgr.SetFlow(admin1, FlowAddProduct, AddStepWaitingExcel)
 	mgr.SetData(admin1, "name", "Pijama Silk")
 	mgr.SetData(admin1, "sell_price", 250000.0)
 
@@ -22,7 +22,7 @@ func TestSessionManager(t *testing.T) {
 	sess1 := mgr.GetSession(admin1)
 	sess2 := mgr.GetSession(admin2)
 
-	if sess1.Flow != FlowAddProduct || sess1.Step != AddStepWaitingPost {
+	if sess1.Flow != FlowAddProduct || sess1.Step != AddStepWaitingExcel {
 		t.Errorf("admin1 session state mismatch")
 	}
 

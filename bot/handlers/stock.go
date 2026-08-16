@@ -321,13 +321,13 @@ func renderProductDetail(c ele.Context, app *AppContext, productID primitive.Obj
 	)
 
 	// If photo is available, send with photo!
-	if p.PhotoFileID != "" {
-		photo := &ele.Photo{
-			File:    ele.File{FileID: p.PhotoFileID},
-			Caption: sb.String(),
-		}
-		return c.Send(photo, menu, ele.ModeHTML)
-	}
+	// if p.PhotoFileID != "" {
+	// 	photo := &ele.Photo{
+	// 		File:    ele.File{FileID: p.PhotoFileID},
+	// 		Caption: sb.String(),
+	// 	}
+	// 	return c.Send(photo, menu, ele.ModeHTML)
+	// }
 
 	return c.Send(sb.String(), menu, ele.ModeHTML)
 }

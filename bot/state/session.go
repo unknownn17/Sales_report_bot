@@ -19,17 +19,7 @@ const (
 
 // AddProduct flow steps
 const (
-	AddStepWaitingPost = iota + 1
-	AddStepAskCountry
-	AddStepCustomCountry
-	AddStepAskName
-	AddStepAskCategory
-	AddStepAskCostSom
-	AddStepAskHasSizes
-	AddStepAskSizeQty
-	AddStepAskSingleQty
-	AddStepShowSummary
-	AddStepEditValue
+	AddStepWaitingExcel = iota + 1
 )
 
 // ConfirmSale flow steps
