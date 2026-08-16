@@ -1,56 +1,55 @@
-name: Build and Deploy Go Application
+  name: Build and Deploy Go Application
 
-on:
-  push:
-    branches: [ "unknown17" ]
-  workflow_dispatch:
+  on:
+    push:
+      branches: [ "unknown17" ]
+    workflow_dispatch:
 
-env:
-  SERVER_USERNAME: ${{ vars.SSH_USER }}
-  SERVER_IP: ${{ vars.SSH_HOST }}
+  env:
+    SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
+    SERVER_IP: ${{ secrets.SERVER_IP }}
 
-jobs:
-  build_push_deploy:
-    runs-on: ubuntu-latest
+  jobs:
+    build_push_deploy:
+      runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
 
-      - name: Run Go tests
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
+        - name: Run Go tests
+          uses: actions/setup-go@v5
+          with:
+            go-version: "1.25"
 
-      - name: Test application
-        run: go test ./...
+        - name: Test application
+          run: go test ./...
 
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1.2.2
-        with:
-          host: ${{ env.SERVER_IP }}
-          username: ${{ env.SERVER_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script_stop: true
-          timeout: 200s
-          script: |
-            mkdir -p ~/go1/src
+        - name: Deploy to server
+          uses: appleboy/ssh-action@v1.2.2
+          with:
+            host: ${{ env.SERVER_IP }}
+            username: ${{ env.SERVER_USERNAME }}
+            key: ${{ secrets.SSH_PRIVATE_KEY }}
+            timeout: 200s
+            script: |
+              mkdir -p ~/go1/src
 
-            if [ ! -d "~/go1/src/referral/.git" ]; then
-              cd ~/go1/src
+              if [ ! -d "~/go1/src/referral/.git" ]; then
+                cd ~/go1/src
 
-              git clone \
-                --branch unknown17 \
-                https://github.com/unknownn17/Sales_report_bot.git \
-                referral
-            else
+                git clone \
+                  --branch unknown17 \
+                  https://github.com/unknownn17/Sales_report_bot.git \
+                  referral
+              else
+                cd ~/go1/src/referral
+
+                git fetch origin unknown17
+                git reset --hard origin/unknown17
+              fi
+
               cd ~/go1/src/referral
 
-              git fetch origin unknown17
-              git reset --hard origin/unknown17
-            fi
-
-            cd ~/go1/src/referral
-
-            sudo docker compose down
-            sudo docker compose up -d --build
+              sudo docker compose down
+              sudo docker compose up -d --build
