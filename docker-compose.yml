@@ -3,7 +3,7 @@ services:
     image: reportmongo:7
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
       - reportmongo-data:/data/db
 
