@@ -92,14 +92,42 @@ func HandleAddProductDoc(app *AppContext) ele.HandlerFunc {
 			pp.Product.CreatedAt = time.Now()
 			pp.Product.UpdatedAt = time.Now()
 
-			// Set status based on stock
-			totalStock := 0
-			for _, st := range pp.Product.Stock {
-				totalStock += st.QuantityAvailable
+			// Upsert by product name: if an active product with the same name exists,
+			// merge new stock into it and update other fields. Otherwise insert as new.
+			existing, err := app.ProductRepo.FindProductByName(ctx, pp.Product.Name)
+			if err != nil {
+				errorCount++
+				sb.WriteString(fmt.Sprintf("❌ Qator %d (%s): qidirishda xatolik\n", i+2, pp.Product.Name))
+				continue
 			}
-			if totalStock == 0 {
-				pp.Product.Status = models.ProductStatusOutOfStock
+
+			if existing != nil {
+				// Update fields from the uploaded Excel row
+				existing.Brand = pp.Product.Brand
+				existing.Country = pp.Product.Country
+				existing.Category = pp.Product.Category
+				existing.SKU = pp.Product.SKU
+				existing.SellPrice = pp.Product.SellPrice
+				existing.CostPriceSom = pp.Product.CostPriceSom
+				existing.Description = pp.Product.Description
+				existing.Status = models.ProductStatusActive
+				existing.UpdatedAt = time.Now()
+
+				// Merge stock: add new arrivals to existing quantities
+				existing.Stock = mergeStock(existing.Stock, pp.Product.Stock)
+				existing.HasSizes = len(existing.Stock) > 0 && existing.Stock[0].Size != ""
+
+				if err := app.ProductRepo.UpdateProduct(ctx, existing); err != nil {
+					errorCount++
+					sb.WriteString(fmt.Sprintf("❌ Qator %d (%s): yangilashda xatolik\n", i+2, pp.Product.Name))
+					continue
+				}
+				savedCount++
+				continue
 			}
+
+			// New product: keep it active regardless of initial stock quantity
+			pp.Product.Status = models.ProductStatusActive
 
 			if err := app.ProductRepo.InsertProduct(ctx, pp.Product); err != nil {
 				errorCount++
@@ -119,6 +147,29 @@ func HandleAddProductDoc(app *AppContext) ele.HandlerFunc {
 		c.Send(sb.String())
 		return SendMainMenu(c)
 	}
+}
+
+// mergeStock adds quantities from incoming stock items into existing ones by size.
+// Sizes not yet present are appended. Empty-size items are treated as generic stock.
+func mergeStock(existing, incoming []models.StockItem) []models.StockItem {
+	merged := make([]models.StockItem, len(existing))
+	copy(merged, existing)
+
+	for _, in := range incoming {
+		found := false
+		for i := range merged {
+			if merged[i].Size == in.Size {
+				merged[i].QuantityAvailable += in.QuantityAvailable
+				found = true
+				break
+			}
+		}
+		if !found {
+			merged = append(merged, in)
+		}
+	}
+
+	return merged
 }
 
 // HandleAddProductPhoto returns a handler that responds when admin sends a photo instead of Excel.

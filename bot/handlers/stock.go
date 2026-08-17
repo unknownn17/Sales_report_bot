@@ -3,19 +3,23 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"telegram-sales-bot/services"
 
-	ele "gopkg.in/telebot.v3"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	ele "gopkg.in/telebot.v3"
 )
+
+const stockPageSize = 10
 
 var (
 	btnStockCountrySel  = (&ele.ReplyMarkup{}).Data("", "stk_cnt_sel")
 	btnStockCategorySel = (&ele.ReplyMarkup{}).Data("", "stk_cat_sel")
 	btnStockProductView = (&ele.ReplyMarkup{}).Data("", "stk_p_view")
+	btnStockPageNav     = (&ele.ReplyMarkup{}).Data("", "stk_page")
 	btnStockBackToList  = (&ele.ReplyMarkup{}).Data("🔙 Mahsulotlar ro'yxatiga qaytish", "stk_back_list")
 	btnStockBackToCat   = (&ele.ReplyMarkup{}).Data("🔙 Kategoriyalarga qaytish", "stk_back_cat")
 	btnStockBackToCnt   = (&ele.ReplyMarkup{}).Data("🔙 Davlatlarga qaytish", "stk_back_cnt")
@@ -35,7 +39,18 @@ func RegisterStock(b *ele.Bot, app *AppContext) {
 		category := c.Callback().Data
 		adminID := c.Sender().ID
 		app.SessionMgr.SetData(adminID, "stk_category", category)
+		app.SessionMgr.SetData(adminID, "stk_page", "0")
 		country := app.SessionMgr.GetDataString(adminID, "stk_country")
+		return renderStockProductList(c, app, country, category, true)
+	})
+
+	// 2a. Pagination Callback
+	b.Handle(&btnStockPageNav, func(c ele.Context) error {
+		pageStr := c.Callback().Data
+		adminID := c.Sender().ID
+		app.SessionMgr.SetData(adminID, "stk_page", pageStr)
+		country := app.SessionMgr.GetDataString(adminID, "stk_country")
+		category := app.SessionMgr.GetDataString(adminID, "stk_category")
 		return renderStockProductList(c, app, country, category, true)
 	})
 
@@ -169,7 +184,7 @@ func renderStockCategoryMenu(c ele.Context, app *AppContext, country string, isE
 	return c.Send(msg, menu)
 }
 
-// Step 3: Render Numbered Products List with Inline Number Buttons
+// Step 3: Render Numbered Products List with Inline Number Buttons and Pagination
 func renderStockProductList(c ele.Context, app *AppContext, country, category string, isEdit bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -192,6 +207,30 @@ func renderStockProductList(c ele.Context, app *AppContext, country, category st
 		return c.Send("Ushbu filtr bo'yicha mahsulotlar topilmadi.")
 	}
 
+	// Determine current page
+	adminID := c.Sender().ID
+	page := 0
+	if pageStr := app.SessionMgr.GetDataString(adminID, "stk_page"); pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p >= 0 {
+			page = p
+		}
+	}
+
+	totalPages := (len(products) + stockPageSize - 1) / stockPageSize
+	if page >= totalPages {
+		page = totalPages - 1
+	}
+	if page < 0 {
+		page = 0
+	}
+
+	start := page * stockPageSize
+	end := start + stockPageSize
+	if end > len(products) {
+		end = len(products)
+	}
+	pageProducts := products[start:end]
+
 	var sb strings.Builder
 	countryLabel := "Barcha davlatlar"
 	if filterCountry != "" {
@@ -202,19 +241,21 @@ func renderStockProductList(c ele.Context, app *AppContext, country, category st
 		categoryLabel = filterCategory
 	}
 
-	sb.WriteString(fmt.Sprintf("📦 Ombor holati (%s | %s):\n\n", countryLabel, categoryLabel))
+	sb.WriteString(fmt.Sprintf("📦 Ombor holati (%s | %s)\n", countryLabel, categoryLabel))
+	sb.WriteString(fmt.Sprintf("📄 Sahifa %d / %d (%d ta mahsulot)\n\n", page+1, totalPages, len(products)))
 
 	menu := &ele.ReplyMarkup{}
 	var numRow []ele.Btn
 	var rows []ele.Row
 
-	for i, p := range products {
+	for i, p := range pageProducts {
+		globalIdx := start + i + 1
 		brandTag := ""
 		if p.Brand != "" {
 			brandTag = fmt.Sprintf("[%s] ", p.Brand)
 		}
 
-		sb.WriteString(fmt.Sprintf("%d. %s%s\n", i+1, brandTag, p.Name))
+		sb.WriteString(fmt.Sprintf("%d. %s%s\n", globalIdx, brandTag, p.Name))
 		sb.WriteString(fmt.Sprintf("   💰 Narxi: %s\n", services.FormatMoney(p.SellPrice)))
 
 		var sizeParts []string
@@ -245,14 +286,28 @@ func renderStockProductList(c ele.Context, app *AppContext, country, category st
 			sb.WriteString(fmt.Sprintf("   🔢 Miqdor: %d dona%s\n\n", totalQty, flag))
 		}
 
-		// Create number button matching the item order
-		btn := menu.Data(fmt.Sprintf("%d", i+1), "stk_p_view", p.ID.Hex())
+		// Create number button matching the global item order
+		btn := menu.Data(fmt.Sprintf("%d", globalIdx), "stk_p_view", p.ID.Hex())
 		numRow = append(numRow, btn)
 
 		// Group buttons in rows of 5
-		if len(numRow) == 5 || i == len(products)-1 {
+		if len(numRow) == 5 || i == len(pageProducts)-1 {
 			rows = append(rows, menu.Row(numRow...))
 			numRow = nil
+		}
+	}
+
+	// Pagination navigation row
+	if totalPages > 1 {
+		var navRow []ele.Btn
+		if page > 0 {
+			navRow = append(navRow, menu.Data("◀️ Oldingi", "stk_page", strconv.Itoa(page-1)))
+		}
+		if page < totalPages-1 {
+			navRow = append(navRow, menu.Data("Keyingi ▶️", "stk_page", strconv.Itoa(page+1)))
+		}
+		if len(navRow) > 0 {
+			rows = append(rows, menu.Row(navRow...))
 		}
 	}
 

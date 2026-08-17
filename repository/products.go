@@ -69,6 +69,44 @@ func (r *ProductRepo) FindProductByID(ctx context.Context, id primitive.ObjectID
 	return &p, nil
 }
 
+// FindProductByName looks up an active product by exact name match.
+func (r *ProductRepo) FindProductByName(ctx context.Context, name string) (*models.Product, error) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	var p models.Product
+	err := r.col.FindOne(timeoutCtx, bson.M{
+		"name":   name,
+		"status": models.ProductStatusActive,
+	}).Decode(&p)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &p, nil
+}
+
+// UpdateProduct fully replaces an existing product document by ID.
+func (r *ProductRepo) UpdateProduct(ctx context.Context, p *models.Product) error {
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	p.UpdatedAt = time.Now()
+	_, err := r.col.ReplaceOne(timeoutCtx, bson.M{"_id": p.ID}, p)
+	return err
+}
+
+// DeleteProduct removes a product document from the collection.
+func (r *ProductRepo) DeleteProduct(ctx context.Context, id primitive.ObjectID) error {
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	_, err := r.col.DeleteOne(timeoutCtx, bson.M{"_id": id})
+	return err
+}
+
 func (r *ProductRepo) FindActiveProducts(ctx context.Context, search string, page, pageSize int) ([]models.Product, int64, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -308,7 +346,8 @@ func (r *ProductRepo) UpdateProductStatus(ctx context.Context, id primitive.Obje
 	return err
 }
 
-// CheckAndUpdateStockStatus checks if all items in stock are 0 and adjusts status.
+// CheckAndUpdateStockStatus deletes the product when all stock reaches 0.
+// Products are removed from the catalog entirely once sold out.
 func (r *ProductRepo) CheckAndUpdateStockStatus(ctx context.Context, productID primitive.ObjectID) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -320,15 +359,11 @@ func (r *ProductRepo) CheckAndUpdateStockStatus(ctx context.Context, productID p
 
 	totalStock := 0
 	for _, it := range p.Stock {
-		if it.QuantityAvailable > 0 {
-			totalStock += it.QuantityAvailable
-		}
+		totalStock += it.QuantityAvailable
 	}
 
-	if totalStock == 0 && p.Status == models.ProductStatusActive {
-		return r.UpdateProductStatus(timeoutCtx, productID, models.ProductStatusOutOfStock)
-	} else if totalStock > 0 && p.Status == models.ProductStatusOutOfStock {
-		return r.UpdateProductStatus(timeoutCtx, productID, models.ProductStatusActive)
+	if totalStock == 0 {
+		return r.DeleteProduct(timeoutCtx, productID)
 	}
 
 	return nil

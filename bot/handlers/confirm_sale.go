@@ -12,8 +12,8 @@ import (
 	"telegram-sales-bot/models"
 	"telegram-sales-bot/services"
 
-	ele "gopkg.in/telebot.v3"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	ele "gopkg.in/telebot.v3"
 )
 
 var (
@@ -501,7 +501,7 @@ func finalizeSale(c ele.Context, app *AppContext) error {
 		}
 	}
 
-	// Update product status (e.g. mark out of stock if 0 left)
+	// Remove product entirely if stock is fully depleted
 	_ = app.ProductRepo.CheckAndUpdateStockStatus(ctx, pid)
 
 	// Clear session without rollback since sale completed
