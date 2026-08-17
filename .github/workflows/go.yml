@@ -44,7 +44,7 @@
                   referral
               fi
 
-              cd ~/go/src/referral
+              cd ~/go/src/refer ral
 
               sudo docker compose down
               sudo docker compose up --build -d

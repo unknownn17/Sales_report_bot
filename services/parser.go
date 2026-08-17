@@ -44,7 +44,7 @@ var (
 	clothingKeywords = []string{
 		"pijama", "pijamalar", "futbolka", "futbolkalar", "shim", "shimlar",
 		"ko'ylak", "koylak", "koʻylak", "kurtka", "sviter", "hudi", "hoodie",
-		"kostyum", "shortik", "tolstovka", "jinsi", "xalat", "komplekt", "kiyim",
+		"kostyum", "shortik", "tolstovka", "jinsi", "xalat", "komplekt", "kiyim", "Dvoyka", "Ko'ylak", "Ofice KIYIM", "Ich Kiyim", "KOFTA YUBKA", "kof",
 	}
 )
 
