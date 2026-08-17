@@ -34,17 +34,20 @@
             timeout: 200s
             script: |
               mkdir -p ~/go/src
+              cd ~/go/src
 
-              if [ ! -d "~/go/src/referral/.git" ]; then
-                cd ~/go/src
-
-                git clone \
-                  --branch unknown17 \
+              if [ ! -d "referral/.git" ]; then
+                git clone --branch unknown17 \
                   https://github.com/unknownn17/Sales_report_bot.git \
                   referral
+              else
+                cd referral
+                git fetch origin unknown17
+                git reset --hard origin/unknown17
+                cd ..
               fi
 
-              cd ~/go/src/refer ral
+              cd referral
 
               sudo docker compose down
               sudo docker compose up --build -d
