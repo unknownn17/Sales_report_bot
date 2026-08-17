@@ -1,11 +1,11 @@
 services:
-  mongo:
-    image: mongo:7
+  reportmongo:
+    image: reportmongo:7
     restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
-      - mongo-data:/data/db
+      - reportmongo-data:/data/db
 
   bot:
     build:
@@ -15,11 +15,11 @@ services:
     environment:
       BOT_TOKEN: ${BOT_TOKEN}
       ADMIN_IDS: ${ADMIN_IDS}
-      MONGO_URI: mongodb://mongo:27017
+      MONGO_URI: mongodb://reportmongo:27017
       DB_NAME: ${DB_NAME:-report_bot}
     depends_on:
-      - mongo
+      - reportmongo
     restart: unless-stopped
 
 volumes:
-  mongo-data:
+  reportmongo-data:
