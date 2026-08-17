@@ -42,11 +42,6 @@
                   --branch unknown17 \
                   https://github.com/unknownn17/Sales_report_bot.git \
                   referral
-              else
-                cd ~/go/src/referral
-
-                git fetch origin unknown17
-                git reset --hard origin/unknown17
               fi
 
               cd ~/go/src/referral
