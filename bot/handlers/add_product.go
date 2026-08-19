@@ -92,6 +92,17 @@ func HandleAddProductDoc(app *AppContext) ele.HandlerFunc {
 			pp.Product.CreatedAt = time.Now()
 			pp.Product.UpdatedAt = time.Now()
 
+			// Skip products with zero or missing stock
+			totalStock := 0
+			for _, st := range pp.Product.Stock {
+				totalStock += st.QuantityAvailable
+			}
+			if totalStock == 0 {
+				errorCount++
+				sb.WriteString(fmt.Sprintf("⚠️ Qator %d (%s): zaxirasi yo'q, o'tkazib yuborildi\n", i+2, pp.Product.Name))
+				continue
+			}
+
 			// Upsert by product name: if an active product with the same name exists,
 			// merge new stock into it and update other fields. Otherwise insert as new.
 			existing, err := app.ProductRepo.FindProductByName(ctx, pp.Product.Name)
